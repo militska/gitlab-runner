@@ -1,0 +1,45 @@
+version: '3'
+
+volumes:
+  elasticsearch:
+    driver: local
+
+services:
+  runner:
+    working_dir: /
+    restart: always
+    image: gitlab/gitlab-runner:alpine
+    volumes:
+      - ./docker/gitlab/etc/gitlab-runner:/etc/gitlab-runner
+      - ./docker/gitlab/etc/gitlab-runner/pipeline/src:/etc/gitlab-runner/pipeline/src
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+  register:
+    restart:  'no'
+    env_file:
+      - .env
+    working_dir: /
+    image: gitlab/gitlab-runner:alpine
+    volumes:
+       - ./docker/gitlab/etc/gitlab-runner:/etc/gitlab-runner
+    command:
+      - register
+      - --non-interactive
+      - --locked=true
+      - --description=$DESCRIPTION
+      - --executor=docker
+      - --limit=4
+      - --request-concurrency=4
+      - --output-limit=16384
+      - --docker-pull-policy=if-not-present
+      - --docker-image=docker:19.03
+      - --docker-volumes=/var/run/docker.sock:/var/run/docker.sock
+      - --docker-volumes=/etc/gitlab-runner/pipeline/src:/etc/gitlab-runner/pipeline/src
+      - --docker-volumes=/cache
+      - --tag-list=$TAG_NAME
+      - --run-untagged=false
+    environment:
+      - CI_SERVER_URL=$CI_URL
+      - REGISTRATION_TOKEN=$REGISTRATION_TOKEN
